@@ -1,7 +1,16 @@
 [project]
 name = "uno-game-py"
 version = "0.1.0"
-description = "Add your description here"
+description = "Just UNO Game Simulator"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "matplotlib>=3.10.7",
+    "pandas>=2.3.3",
+]
+
+[dependency-groups]
+dev = [
+    "isort>=7.0.0",
+    "ruff>=0.14.1",
+]

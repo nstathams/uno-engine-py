@@ -3,20 +3,24 @@ from __future__ import annotations
 from enum import IntEnum
 from typing import Optional
 
+
 class CardColor(IntEnum):
     """
     Enum class for the color of the card
     """
+
     RED = 0
     BLUE = 1
     GREEN = 2
     YELLOW = 3
     WILD = 4
 
+
 class CardLabel(IntEnum):
     """
     Enum class for the value/number of the card
     """
+
     ZERO = 0
     ONE = 1
     TWO = 2
@@ -33,79 +37,84 @@ class CardLabel(IntEnum):
     WILD = 13
     WILD_DRAW_FOUR = 14
 
+
 class EffectState(IntEnum):
     """
     State machine states for card effects
     """
+
     NO_EFFECT = 0
     PENDING = 1
     APPLIED = 2
     RESOLVED = 3
 
+
 class CardEffect:
     """
     State machine for UNO card effects with numeric state management
     """
-    
+
     def __init__(self) -> None:
         # Effect state
         self._state: EffectState = EffectState.NO_EFFECT
-        
+
         # Effect properties
         self._color_change: Optional[CardColor] = None
         self._draw_count: int = 0
         self._skip_count: int = 0
         self._reverse_direction: bool = False
-        
+
         # Stacking effects (for multiple DRAW cards)
         self._stackable: bool = False
-        
+
     # State management
     @property
     def state(self) -> EffectState:
         return self._state
-    
+
+    # Some usefull methods 
+
     def set_pending(self) -> None:
         """Set effect to pending state"""
         if self._state == EffectState.NO_EFFECT:
             self._state = EffectState.PENDING
-    
+
     def set_applied(self) -> None:
         """Set effect to applied state"""
         if self._state == EffectState.PENDING:
             self._state = EffectState.APPLIED
-    
+
     def set_resolved(self) -> None:
         """Set effect to resolved state"""
         if self._state == EffectState.APPLIED:
             self._state = EffectState.RESOLVED
-    
+
     def reset_state(self) -> None:
         """Reset effect to no effect state"""
         self._state = EffectState.NO_EFFECT
         self.clear_effects()
-    
+
     def is_active(self) -> bool:
         """Check if effect is active (pending or applied)"""
         return self._state in (EffectState.PENDING, EffectState.APPLIED)
-    
+
     def is_pending(self) -> bool:
         """Check if effect is pending"""
         return self._state == EffectState.PENDING
-    
+
     def is_applied(self) -> bool:
         """Check if effect is applied"""
         return self._state == EffectState.APPLIED
-    
+
     def is_resolved(self) -> bool:
         """Check if effect is resolved"""
         return self._state == EffectState.RESOLVED
-    
+
     # Effect properties with state transitions
     @property
     def color_change(self) -> Optional[CardColor]:
         return self._color_change
-    
+
     @color_change.setter
     def color_change(self, color: Optional[CardColor]) -> None:
         if color is not None:
@@ -115,11 +124,11 @@ class CardEffect:
                 raise ValueError("Cannot change to WILD color")
             self.set_pending()
         self._color_change = color
-    
+
     @property
     def draw_count(self) -> int:
         return self._draw_count
-    
+
     @draw_count.setter
     def draw_count(self, count: int) -> None:
         if not isinstance(count, int) or count < 0:
@@ -127,11 +136,11 @@ class CardEffect:
         if count > 0:
             self.set_pending()
         self._draw_count = count
-    
+
     @property
     def skip_count(self) -> int:
         return self._skip_count
-    
+
     @skip_count.setter
     def skip_count(self, count: int) -> None:
         if not isinstance(count, int) or count < 0:
@@ -139,11 +148,11 @@ class CardEffect:
         if count > 0:
             self.set_pending()
         self._skip_count = count
-    
+
     @property
     def reverse_direction(self) -> bool:
         return self._reverse_direction
-    
+
     @reverse_direction.setter
     def reverse_direction(self, reverse: bool) -> None:
         if not isinstance(reverse, bool):
@@ -151,23 +160,25 @@ class CardEffect:
         if reverse:
             self.set_pending()
         self._reverse_direction = reverse
-    
+
     @property
     def stackable(self) -> bool:
         return self._stackable
-    
+
     @stackable.setter
     def stackable(self, stackable: bool) -> None:
         self._stackable = stackable
-    
+
     # Effect operations
     def has_effects(self) -> bool:
         """Check if there are any effects configured"""
-        return (self._color_change is not None or 
-                self._draw_count > 0 or 
-                self._skip_count > 0 or 
-                self._reverse_direction)
-    
+        return (
+            self._color_change is not None
+            or self._draw_count > 0
+            or self._skip_count > 0
+            or self._reverse_direction
+        )
+
     def clear_effects(self) -> None:
         """Clear all effects and reset state"""
         self._color_change = None
@@ -176,30 +187,30 @@ class CardEffect:
         self._reverse_direction = False
         self._stackable = False
         self.reset_state()
-    
+
     def combine(self, other: CardEffect) -> None:
         """
         Combine effects with another CardEffect (state machine aware)
         """
         if other.state != EffectState.NO_EFFECT:
             self.set_pending()
-        
+
         # Color change takes precedence
         if other.color_change is not None:
             self.color_change = other.color_change
-        
+
         # Additive effects
         self.draw_count += other.draw_count
         self.skip_count += other.skip_count
-        
+
         # Boolean effects (OR logic)
         if other.reverse_direction:
             self.reverse_direction = True
-        
+
         # Stacking logic
         if other.stackable:
             self.stackable = True
-    
+
     def execute_draw(self) -> int:
         """Execute draw effect and return number of cards drawn"""
         if self.is_applied() and self._draw_count > 0:
@@ -207,7 +218,7 @@ class CardEffect:
             self._draw_count = 0
             return drawn
         return 0
-    
+
     def execute_skip(self) -> int:
         """Execute skip effect and return number of turns skipped"""
         if self.is_applied() and self._skip_count > 0:
@@ -222,29 +233,33 @@ class Card:
     Represents an UNO card with color and label properties.
     Handles card validation and game logic.
     """
-    
+
     # Class constants for special cards
     ACTION_CARDS = {CardLabel.SKIP, CardLabel.REVERSE, CardLabel.DRAW_TWO}
     WILD_CARDS = {CardLabel.WILD, CardLabel.WILD_DRAW_FOUR}
-    
+
     def __init__(self, color: CardColor, label: CardLabel) -> None:
         self._validate_card(color, label)
         self._color = color
         self._label = label
         self._is_wild = label in self.WILD_CARDS
-        
+
     def _validate_card(self, color: CardColor, label: CardLabel) -> None:
         """Validate if the card combination is legal"""
         # Wild cards must have WILD color
         if label in self.WILD_CARDS and color != CardColor.WILD:
             raise ValueError(f"Wild cards ({label.name}) must have WILD color")
-        
+
         # Non-wild cards cannot have WILD color
         if label not in self.WILD_CARDS and color == CardColor.WILD:
             raise ValueError(f"Non-wild cards cannot have WILD color")
-            
+
         # Number cards must be 0-9
-        if not self._is_number_card(label) and not self._is_action_card(label) and not self._is_wild_card(label):
+        if (
+            not self._is_number_card(label)
+            and not self._is_action_card(label)
+            and not self._is_wild_card(label)
+        ):
             raise ValueError(f"Invalid card label: {label}")
 
     @property
@@ -278,21 +293,23 @@ class Card:
             return 50
         return 0
 
-    def can_play_on(self, other: 'Card', current_color: Optional[CardColor] = None) -> bool:
+    def can_play_on(
+        self, other: "Card", current_color: Optional[CardColor] = None
+    ) -> bool:
         """
         Check if this card can be played on another card
         """
         if self.is_wild:
             return True
-            
+
         # Same color
         if self.color == (current_color or other.color):
             return True
-            
+
         # Same label/number (but not for wild cards)
         if self.label == other.label and not other.is_wild:
             return True
-            
+
         return False
 
     def play(self, new_color: Optional[CardColor] = None) -> dict:
@@ -300,26 +317,26 @@ class Card:
         Play the card and return effects
         """
         effects = {
-            'color_change': None,
-            'draw_cards': 0,
-            'skip_turn': False,
-            'reverse': False
+            "color_change": None,
+            "draw_cards": 0,
+            "skip_turn": False,
+            "reverse": False,
         }
-        
+
         if self.is_wild and new_color:
             if new_color == CardColor.WILD:
                 raise ValueError("Cannot change to WILD color")
-            effects['color_change'] = new_color
-        
+            effects["color_change"] = new_color
+
         if self.label == CardLabel.DRAW_TWO:
-            effects['draw_cards'] = 2
+            effects["draw_cards"] = 2
         elif self.label == CardLabel.WILD_DRAW_FOUR:
-            effects['draw_cards'] = 4
+            effects["draw_cards"] = 4
         elif self.label == CardLabel.SKIP:
-            effects['skip_turn'] = True
+            effects["skip_turn"] = True
         elif self.label == CardLabel.REVERSE:
-            effects['reverse'] = True
-            
+            effects["reverse"] = True
+
         return effects
 
     @classmethod
@@ -356,11 +373,12 @@ class Card:
     def __hash__(self) -> int:
         return hash((self.color, self.label))
 
+
 class CardFactory:
     """
     Factory class to create UNO cards and decks
     """
-    
+
     @staticmethod
     def create_number_card(color: CardColor, number: int) -> Card:
         """Create a number card (0-9)"""
